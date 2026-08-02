@@ -1015,6 +1015,43 @@
     const ANNOUNCE_NEAR_M = 35;
     const OFF_ROUTE_M = 60;
     let navState = null;
+    let camState = { lon: null, lat: null, bearing: 0 };
+let camTarget = { lon: null, lat: null, bearing: 0 };
+let camLoopId = null;
+
+function angleLerp(a, b, t) {
+    let diff = ((b - a + 540) % 360) - 180;
+    return a + diff * t;
+}
+
+function startCameraLoop() {
+    if (camLoopId) return;
+    function frame() {
+        if (!navState) { camLoopId = null; return; }
+        if (camState.lon !== null && camTarget.lon !== null) {
+            const smoothing = 0.12; // 0.08 = très fluide/lent à rattraper, 0.25 = plus réactif
+            camState.lon += (camTarget.lon - camState.lon) * smoothing;
+            camState.lat += (camTarget.lat - camState.lat) * smoothing;
+            camState.bearing = angleLerp(camState.bearing, camTarget.bearing, smoothing);
+
+            map.jumpTo({
+                center: [camState.lon, camState.lat],
+                bearing: camState.bearing,
+                zoom: NAV_ZOOM,
+                pitch: NAV_PITCH
+            });
+        }
+        camLoopId = requestAnimationFrame(frame);
+    }
+    camLoopId = requestAnimationFrame(frame);
+}
+
+function stopCameraLoop() {
+    if (camLoopId) cancelAnimationFrame(camLoopId);
+    camLoopId = null;
+    camState = { lon: null, lat: null, bearing: 0 };
+    camTarget = { lon: null, lat: null, bearing: 0 };
+}
 
     function updateBanner() {
         if (!navState) return;
@@ -1091,7 +1128,12 @@
         navState.lastPos = [longitude, latitude];
 
         document.getElementById('dash-speed').textContent = speed && speed > 0 ? Math.round(speed * 3.6) : 0;
-        map.easeTo({ center: [longitude, latitude], bearing, zoom: NAV_ZOOM, pitch: NAV_PITCH, duration: 450 });
+
+if (camState.lon === null) {
+    // Première position : on se place directement dessus, sans lissage
+    camState = { lon: longitude, lat: latitude, bearing };
+}
+camTarget = { lon: longitude, lat: latitude, bearing };
 
         if (!navState.rerouting) {
             const offDist = distanceToRoute(longitude, latitude, navState.coords);
@@ -1178,7 +1220,10 @@
             updateBanner();
         }
 
-        map.easeTo({ center: coords[0], pitch: NAV_PITCH, zoom: NAV_ZOOM, bearing: initialBearing, duration: 900 });
+        camState = { lon: coords[0][0], lat: coords[0][1], bearing: initialBearing };
+        camTarget = { lon: coords[0][0], lat: coords[0][1], bearing: initialBearing };
+        map.jumpTo({ center: coords[0], pitch: NAV_PITCH, zoom: NAV_ZOOM, bearing: initialBearing });
+        startCameraLoop();
 
         if (navigator.geolocation) {
             // CORRECTION : Options configurées pour forcer un rafraîchissement en temps réel sans utiliser d'anciennes positions en cache
@@ -1192,6 +1237,7 @@
     function stopNavigation() {
         if (navState && navState.watchId) navigator.geolocation.clearWatch(navState.watchId);
         navState = null;
+        stopCameraLoop();
         speechSynthesis.cancel();
 
         const panel = document.getElementById('search-panel');
