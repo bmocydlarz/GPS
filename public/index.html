@@ -1326,7 +1326,7 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         document.getElementById('nav-banner').style.display = 'none';
         document.getElementById('nav-dash').classList.remove('show');
 
-        // --- CORRECTION : RE-CRÉATION PROPRE DES ITINÉRAIRES DE SÉLECTION ---
+        // Recréation des itinéraires de sélection
         if (currentTrajets) {
             drawnRouteIds = [];
             
@@ -1343,16 +1343,27 @@ camTarget = { lon: longitude, lat: latitude, bearing };
                 drawnRouteIds.push('route-gratuit');
             }
 
-            // Resélectionner par défaut la route qui était active ou la première
             if (selectedRouteId && map.getLayer(selectedRouteId)) {
                 selectRoute(selectedRouteId);
             } else if (drawnRouteIds.length > 0) {
                 selectRoute(drawnRouteIds[0]);
             }
-        }
-        // ------------------------------------------------------------------
 
-        map.easeTo({ pitch: 0, bearing: 0, zoom: 8 });
+            // --- CORRECTION DU CADRAGE (Même comportement qu'à la recherche) ---
+            const bounds = new maplibregl.LngLatBounds();
+            drawnRouteIds.forEach(id => {
+                currentTrajets[ROUTE_KEY[id]].geometry.geometry.coordinates.forEach(c => bounds.extend(c));
+            });
+
+            const paddingOptions = isMobileScreen() 
+                ? { padding: 80 } 
+                : { top: 80, bottom: 80, left: 370, right: 80 };
+
+            // Remise à plat de la caméra (pitch 0, bearing 0) tout en englobant les tracés
+            map.easeTo({ pitch: 0, bearing: 0 });
+            map.fitBounds(bounds, { ...paddingOptions, duration: 900 });
+            // -----------------------------------------------------------------
+        }
     }
 
     function init() {
