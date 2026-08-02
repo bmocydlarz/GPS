@@ -24,7 +24,7 @@ function calculateTollCost(route) {
 
 async function getRoute(start, end, tollPenalty) {
     try {
-        const response = await axios.post('http://100.100.63.101:8080/route', {
+        const response = await axios.post('https://nas-router-1.tail3aa200.ts.net/route', {
             points: [start, end],
             profile: "car",
             elevation: false,
