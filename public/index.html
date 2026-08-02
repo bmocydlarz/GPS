@@ -101,6 +101,16 @@
     }
     .icon-btn:hover{background:var(--chip-bg);}
 
+    .car-marker {
+        width: 40px;
+        height: 40px;
+        background-image: url('https://cdn-icons-png.flaticon.com/512/741/741407.png'); /* Icône de voiture (vous pouvez changer l'URL) */
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        transition: transform 0.1s linear; /* Rend la rotation fluide */
+    }
+
     .fav-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
     .fav-chip{
         display:inline-flex;align-items:center;gap:6px;background:var(--chip-bg);border-radius:999px;
@@ -353,6 +363,7 @@
     }
 
     let darkMode = false;
+    let carMarker = null;
     const savedTheme = localStorage.getItem('gpsBudgetDark');
 
     if (savedTheme !== null) {
@@ -1117,6 +1128,15 @@ function stopCameraLoop() {
         if (!navState) return;
         const { longitude, latitude, speed, heading } = position.coords;
 
+        if (carMarker) {
+            carMarker.setLngLat([longitude, latitude]);
+            if (typeof heading === 'number' && !isNaN(heading)) {
+                // Rotation de l'élément HTML de la voiture selon le cap
+                const el = carMarker.getElement();
+                el.style.transform = `rotate(${heading}deg)`;
+            }
+        }
+
         // --- MISE À JOUR DU TRACÉ PASSÉ (GRISÉ) ET FUTUR ---
 if (navState && navState.coords) {
     let closestIndex = 0;
@@ -1224,6 +1244,15 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         const key = ROUTE_KEY[selectedId];
         const routeData = currentTrajets && currentTrajets[key];
         if (!routeData) return;
+
+        // Création du marqueur voiture si inexistant
+        if (!carMarker) {
+            const el = document.createElement('div');
+            el.className = 'car-marker';
+            carMarker = new maplibregl.Marker({ element: el })
+                .setLngLat(coords[0])
+                .addTo(map);
+        }
 
         // 1. On supprime la ligne globale simple de l'itinéraire sélectionné
         if (map.getLayer(selectedId)) map.removeLayer(selectedId);
