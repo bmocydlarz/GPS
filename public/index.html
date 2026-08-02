@@ -102,13 +102,16 @@
     .icon-btn:hover{background:var(--chip-bg);}
 
     .car-marker {
-        width: 40px;
-        height: 40px;
-        background-image: url('https://cdn-icons-png.flaticon.com/512/741/741407.png'); /* Icône de voiture (vous pouvez changer l'URL) */
+        width: 44px;
+        height: 44px;
+        background-image: url('https://cdn-icons-png.flaticon.com/512/3097/3097144.png'); /* Icône de voiture 3D isométrique propre */
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        transition: transform 0.1s linear; /* Rend la rotation fluide */
+        /* Centre parfaitement l'ancre du marqueur sur les coordonnées GPS */
+        transform: translate(-50%, -50%);
+        transition: transform 0.15s linear;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); /* Ajoute une ombre pour un effet 3D relief */
     }
 
     .fav-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
