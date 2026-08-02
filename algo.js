@@ -92,6 +92,4 @@ app.post('/api/calculer-trajets', async (req, res) => {
     res.json({ rapide: fastestRoute, budget: budgetRoute, gratuit: freeRoute });
 });
 
-app.listen(3000, () => {
-    console.log("🚀 Backend prêt avec tracés détaillés sur http://localhost:3000");
-});
+module.exports = app;
