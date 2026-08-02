@@ -1221,42 +1221,41 @@ camTarget = { lon: longitude, lat: latitude, bearing };
     }
 
     function startNavigation(selectedId) {
-    const key = ROUTE_KEY[selectedId];
-    const routeData = currentTrajets && currentTrajets[key];
-    if (!routeData) return;
+        const key = ROUTE_KEY[selectedId];
+        const routeData = currentTrajets && currentTrajets[key];
+        if (!routeData) return;
 
-    // 1. On supprime la ligne globale simple de l'itinéraire sélectionné
-    if (map.getLayer(selectedId)) map.removeLayer(selectedId);
-    if (map.getSource(selectedId)) map.removeSource(selectedId);
+        // 1. On supprime la ligne globale simple de l'itinéraire sélectionné
+        if (map.getLayer(selectedId)) map.removeLayer(selectedId);
+        if (map.getSource(selectedId)) map.removeSource(selectedId);
 
-    const coords = routeData.geometry.geometry.coordinates;
+        const coords = routeData.geometry.geometry.coordinates;
 
-    // 2. On crée 2 couches distinctes : une pour le passé (gris), une pour le futur (bleu)
-    const pastId = selectedId + '-passe';
-    const futureId = selectedId + '-futur';
-    const emptyGeoJson = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } };
+        // 2. On crée 2 couches distinctes : une pour le passé (gris), une pour le futur (bleu)
+        const pastId = selectedId + '-passe';
+        const futureId = selectedId + '-futur';
+        const emptyGeoJson = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } };
 
-    // Tracé déjà parcouru (Gris)
-    map.addSource(pastId, { type: 'geojson', data: emptyGeoJson });
-    map.addLayer({
-        id: pastId, type: 'line', source: pastId,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#B9BEC6', 'line-width': 6, 'line-opacity': 0.8 }
-    });
+        // Tracé déjà parcouru (Gris)
+        map.addSource(pastId, { type: 'geojson', data: emptyGeoJson });
+        map.addLayer({
+            id: pastId, type: 'line', source: pastId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': '#B9BEC6', 'line-width': 6, 'line-opacity': 0.8 }
+        });
 
-    // Tracé restant à parcourir (Bleu actif)
-    map.addSource(futureId, { type: 'geojson', data: routeData.geometry });
-    map.addLayer({
-        id: futureId, type: 'line', source: futureId,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0A84FF', 'line-width': 7, 'line-opacity': 1 }
-    });
+        // Tracé restant à parcourir (Bleu actif)
+        map.addSource(futureId, { type: 'geojson', data: routeData.geometry });
+        map.addLayer({
+            id: futureId, type: 'line', source: futureId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': '#0A84FF', 'line-width': 7, 'line-opacity': 1 }
+        });
 
         document.getElementById('search-panel').style.display = 'none';
         document.getElementById('nav-banner').style.display = 'block';
         document.getElementById('nav-dash').classList.add('show');
 
-        const coords = routeData.geometry.geometry.coordinates;
         const lookAhead = Math.min(5, coords.length - 1);
         const initialBearing = coords.length > 1 ? computeBearing(coords[0][0], coords[0][1], coords[lookAhead][0], coords[lookAhead][1]) : 0;
 
@@ -1289,7 +1288,6 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         startCameraLoop();
 
         if (navigator.geolocation) {
-            // CORRECTION : Options configurées pour forcer un rafraîchissement en temps réel sans utiliser d'anciennes positions en cache
             navState.watchId = navigator.geolocation.watchPosition(handlePosition, (err) => {
                 console.warn('Géolocalisation indisponible :', err.message);
             }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
