@@ -1297,13 +1297,13 @@ camTarget = { lon: longitude, lat: latitude, bearing };
 
     function stopNavigation() {
         if (navState && navState.routeId) {
-        const pastId = navState.routeId + '-passe';
-        const futureId = navState.routeId + '-futur';
-        if (map.getLayer(pastId)) map.removeLayer(pastId);
-        if (map.getSource(pastId)) map.removeSource(pastId);
-        if (map.getLayer(futureId)) map.removeLayer(futureId);
-        if (map.getSource(futureId)) map.removeSource(futureId);
-    }
+            const pastId = navState.routeId + '-passe';
+            const futureId = navState.routeId + '-futur';
+            if (map.getLayer(pastId)) map.removeLayer(pastId);
+            if (map.getSource(pastId)) map.removeSource(pastId);
+            if (map.getLayer(futureId)) map.removeLayer(futureId);
+            if (map.getSource(futureId)) map.removeSource(futureId);
+        }
         if (navState && navState.watchId) navigator.geolocation.clearWatch(navState.watchId);
         navState = null;
         stopCameraLoop();
@@ -1325,6 +1325,32 @@ camTarget = { lon: longitude, lat: latitude, bearing };
 
         document.getElementById('nav-banner').style.display = 'none';
         document.getElementById('nav-dash').classList.remove('show');
+
+        // --- CORRECTION : RE-CRÉATION PROPRE DES ITINÉRAIRES DE SÉLECTION ---
+        if (currentTrajets) {
+            drawnRouteIds = [];
+            
+            if (currentTrajets.budget) {
+                drawRoute('route-budget', currentTrajets.budget.geometry);
+                drawnRouteIds.push('route-budget');
+            }
+            if (currentTrajets.rapide && (!currentTrajets.budget || currentTrajets.rapide.tollCost !== currentTrajets.budget.tollCost)) {
+                drawRoute('route-rapide', currentTrajets.rapide.geometry);
+                drawnRouteIds.push('route-rapide');
+            }
+            if (currentTrajets.gratuit && (!currentTrajets.budget || currentTrajets.gratuit.tollCost !== currentTrajets.budget.tollCost)) {
+                drawRoute('route-gratuit', currentTrajets.gratuit.geometry);
+                drawnRouteIds.push('route-gratuit');
+            }
+
+            // Resélectionner par défaut la route qui était active ou la première
+            if (selectedRouteId && map.getLayer(selectedRouteId)) {
+                selectRoute(selectedRouteId);
+            } else if (drawnRouteIds.length > 0) {
+                selectRoute(drawnRouteIds[0]);
+            }
+        }
+        // ------------------------------------------------------------------
 
         map.easeTo({ pitch: 0, bearing: 0, zoom: 8 });
     }
