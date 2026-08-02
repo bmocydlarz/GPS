@@ -24,7 +24,7 @@ function calculateTollCost(route) {
 
 async function getRoute(start, end, tollPenalty) {
     try {
-        const response = await axios.post('http://100.121.54.98:8989/route', {
+        const response = await axios.post('http://100.100.63.101:8989/route', {
             points: [start, end],
             profile: "car",
             elevation: false,
