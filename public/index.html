@@ -1245,7 +1245,10 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         const routeData = currentTrajets && currentTrajets[key];
         if (!routeData) return;
 
-        // Création du marqueur voiture si inexistant
+        // 1. Récupération des coordonnées en premier
+        const coords = routeData.geometry.geometry.coordinates;
+
+        // 2. Création du marqueur voiture si inexistant
         if (!carMarker) {
             const el = document.createElement('div');
             el.className = 'car-marker';
@@ -1254,13 +1257,11 @@ camTarget = { lon: longitude, lat: latitude, bearing };
                 .addTo(map);
         }
 
-        // 1. On supprime la ligne globale simple de l'itinéraire sélectionné
+        // 3. On supprime la ligne globale simple de l'itinéraire sélectionné
         if (map.getLayer(selectedId)) map.removeLayer(selectedId);
         if (map.getSource(selectedId)) map.removeSource(selectedId);
 
-        const coords = routeData.geometry.geometry.coordinates;
-
-        // 2. On crée 2 couches distinctes : une pour le passé (gris), une pour le futur (bleu)
+        // 4. On crée 2 couches distinctes : une pour le passé (gris), une pour le futur (bleu)
         const pastId = selectedId + '-passe';
         const futureId = selectedId + '-futur';
         const emptyGeoJson = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } };
