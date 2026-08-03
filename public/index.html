@@ -101,6 +101,19 @@
     }
     .icon-btn:hover{background:var(--chip-bg);}
 
+    .car-marker {
+        width: 44px;
+        height: 44px;
+        background-image: url('https://cdn-icons-png.flaticon.com/512/3097/3097144.png'); /* Icône de voiture 3D isométrique propre */
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        /* Centre parfaitement l'ancre du marqueur sur les coordonnées GPS */
+        transform: translate(-50%, -50%);
+        transition: transform 0.15s linear;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); /* Ajoute une ombre pour un effet 3D relief */
+    }
+
     .fav-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
     .fav-chip{
         display:inline-flex;align-items:center;gap:6px;background:var(--chip-bg);border-radius:999px;
@@ -353,6 +366,7 @@
     }
 
     let darkMode = false;
+    let carMarker = null;
     const savedTheme = localStorage.getItem('gpsBudgetDark');
 
     if (savedTheme !== null) {
@@ -617,19 +631,12 @@
     }
 
     function redrawAllRoutes() {
-        if (currentTrajets) {
-            drawnRouteIds.forEach(id => {
-                const data = currentTrajets[ROUTE_KEY[id]];
-                if (data) drawRoute(id, data.geometry);
-            });
-            if (selectedRouteId) selectRoute(selectedRouteId);
-        }
-        // La voiture 3D est un vrai layer MapLibre : elle disparaît lors d'un changement
-        // de style (dark/light) et doit donc être recréée à sa dernière position connue.
-        if (navState && camState.lon !== null) {
-            ensureCarLayers();
-            updateCarPosition(camState.lon, camState.lat, camState.bearing);
-        }
+        if (!currentTrajets) return;
+        drawnRouteIds.forEach(id => {
+            const data = currentTrajets[ROUTE_KEY[id]];
+            if (data) drawRoute(id, data.geometry);
+        });
+        if (selectedRouteId) selectRoute(selectedRouteId);
     }
 
     function selectRoute(routeId) {
@@ -960,75 +967,6 @@
         return (toDeg(Math.atan2(y, x)) + 360) % 360;
     }
 
-    // ===== VOITURE 3D (vraie extrusion MapLibre, pas une image plate) =====
-    // Principe : un "fill-extrusion" a un toit (vu de dessus) et des flancs (visibles
-    // quand la caméra s'incline). C'est exactement le même mécanisme que les bâtiments 3D.
-    const CAR_SRC_BODY = 'car-3d-body-src';
-    const CAR_SRC_CABIN = 'car-3d-cabin-src';
-    const CAR_LAYER_BODY = 'car-3d-body';
-    const CAR_LAYER_CABIN = 'car-3d-cabin';
-
-    function offsetLngLat(lon, lat, eastM, northM) {
-        const mPerDegLat = 111320;
-        const mPerDegLon = 111320 * Math.cos(lat * Math.PI / 180);
-        return [lon + eastM / mPerDegLon, lat + northM / mPerDegLat];
-    }
-
-    // Rectangle (empreinte au sol) centré sur (lon,lat), orienté selon le cap (0° = nord).
-    // offsetFwd décale le centre vers l'avant (>0) ou l'arrière (<0), utile pour l'habitacle.
-    function carRectPolygon(lon, lat, bearingDeg, lenM, widthM, offsetFwd = 0) {
-        const rad = bearingDeg * Math.PI / 180;
-        const fwd = [Math.sin(rad), Math.cos(rad)];
-        const right = [Math.cos(rad), -Math.sin(rad)];
-        const halfL = lenM / 2, halfW = widthM / 2;
-        const local = [
-            [-halfW, halfL + offsetFwd], [halfW, halfL + offsetFwd],
-            [halfW, -halfL + offsetFwd], [-halfW, -halfL + offsetFwd]
-        ];
-        const ring = local.map(([x, y]) => offsetLngLat(lon, lat, right[0] * x + fwd[0] * y, right[1] * x + fwd[1] * y));
-        ring.push(ring[0]);
-        return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} };
-    }
-
-    function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
-
-    function ensureCarLayers() {
-        if (map.getSource(CAR_SRC_BODY)) return; // déjà présent (évite les doublons)
-
-        map.addSource(CAR_SRC_BODY, { type: 'geojson', data: emptyFC() });
-        map.addSource(CAR_SRC_CABIN, { type: 'geojson', data: emptyFC() });
-
-        // Carrosserie : vue de dessus = rectangle plein. Vue inclinée = les flancs apparaissent.
-        map.addLayer({
-            id: CAR_LAYER_BODY, type: 'fill-extrusion', source: CAR_SRC_BODY,
-            paint: {
-                'fill-extrusion-color': '#0A84FF',
-                'fill-extrusion-height': 1.3,
-                'fill-extrusion-base': 0,
-                'fill-extrusion-opacity': 1
-            }
-        });
-
-        // Habitacle/toit : rectangle plus étroit et plus haut, décalé vers l'arrière
-        // → donne, vu de dessus, la silhouette classique "carrosserie + toit",
-        //   et vu de côté, le profil d'un capot + une cabine.
-        map.addLayer({
-            id: CAR_LAYER_CABIN, type: 'fill-extrusion', source: CAR_SRC_CABIN,
-            paint: {
-                'fill-extrusion-color': '#0B1E3D',
-                'fill-extrusion-height': 2.0,
-                'fill-extrusion-base': 1.3,
-                'fill-extrusion-opacity': 1
-            }
-        });
-    }
-
-    function updateCarPosition(lon, lat, bearingDeg) {
-        if (!map.getSource(CAR_SRC_BODY)) return;
-        map.getSource(CAR_SRC_BODY).setData(carRectPolygon(lon, lat, bearingDeg, 4.2, 1.9));
-        map.getSource(CAR_SRC_CABIN).setData(carRectPolygon(lon, lat, bearingDeg, 2.3, 1.6, -0.3));
-    }
-
     function pointToSegmentDistance(plon, plat, alon, alat, blon, blat) {
         const R = 6371000;
         const toRad = d => d * Math.PI / 180;
@@ -1116,10 +1054,6 @@ function startCameraLoop() {
                 zoom: NAV_ZOOM,
                 pitch: NAV_PITCH
             });
-
-            // La voiture suit exactement la même position lissée que la caméra (60fps),
-            // au lieu de sauter directement sur chaque fix GPS brut : c'est ce qui supprime les saccades.
-            updateCarPosition(camState.lon, camState.lat, camState.bearing);
         }
         camLoopId = requestAnimationFrame(frame);
     }
@@ -1196,6 +1130,15 @@ function stopCameraLoop() {
     function handlePosition(position) {
         if (!navState) return;
         const { longitude, latitude, speed, heading } = position.coords;
+
+        if (carMarker) {
+            carMarker.setLngLat([longitude, latitude]);
+            if (typeof heading === 'number' && !isNaN(heading)) {
+                // Rotation de l'élément HTML de la voiture selon le cap
+                const el = carMarker.getElement();
+                el.style.transform = `rotate(${heading}deg)`;
+            }
+        }
 
         // --- MISE À JOUR DU TRACÉ PASSÉ (GRISÉ) ET FUTUR ---
 if (navState && navState.coords) {
@@ -1308,15 +1251,16 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         // 1. Récupération des coordonnées en premier
         const coords = routeData.geometry.geometry.coordinates;
 
-        // 2. Cap initial (utilisé à la fois par la caméra et par la voiture 3D)
-        const lookAhead = Math.min(5, coords.length - 1);
-        const initialBearing = coords.length > 1 ? computeBearing(coords[0][0], coords[0][1], coords[lookAhead][0], coords[lookAhead][1]) : 0;
+        // 2. Création du marqueur voiture si inexistant
+        if (!carMarker) {
+            const el = document.createElement('div');
+            el.className = 'car-marker';
+            carMarker = new maplibregl.Marker({ element: el })
+                .setLngLat(coords[0])
+                .addTo(map);
+        }
 
-        // 3. Création de la voiture 3D (extrusion) si inexistante, positionnée immédiatement
-        ensureCarLayers();
-        updateCarPosition(coords[0][0], coords[0][1], initialBearing);
-
-        // 4. On supprime la ligne globale simple de l'itinéraire sélectionné
+        // 3. On supprime la ligne globale simple de l'itinéraire sélectionné
         if (map.getLayer(selectedId)) map.removeLayer(selectedId);
         if (map.getSource(selectedId)) map.removeSource(selectedId);
 
@@ -1344,6 +1288,9 @@ camTarget = { lon: longitude, lat: latitude, bearing };
         document.getElementById('search-panel').style.display = 'none';
         document.getElementById('nav-banner').style.display = 'block';
         document.getElementById('nav-dash').classList.add('show');
+
+        const lookAhead = Math.min(5, coords.length - 1);
+        const initialBearing = coords.length > 1 ? computeBearing(coords[0][0], coords[0][1], coords[lookAhead][0], coords[lookAhead][1]) : 0;
 
         navState = {
             routeId: selectedId,
